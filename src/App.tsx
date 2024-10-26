@@ -1,35 +1,85 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useEffect, useRef, useState } from "react";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+declare global {
+  interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ImageCapture: any;
+  }
 }
 
-export default App
+function App() {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const imageCapture = useRef<typeof window.ImageCapture | null>(null);
+
+  const startCamera = async () => {
+    if (videoRef.current) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+        videoRef.current.srcObject = stream;
+
+        // Create ImageCapture object
+        const track = stream.getVideoTracks()[0];
+        imageCapture.current = new window.ImageCapture(track);
+      } catch (err) {
+        console.error("Error accessing camera:", err);
+      }
+    }
+  };
+
+  const capturePhoto = async () => {
+    if (imageCapture.current) {
+      try {
+        const blob = await imageCapture.current.takePhoto();
+        const photoUrl = URL.createObjectURL(blob);
+        setPhotos((prevPhotos) => [...prevPhotos, photoUrl]);
+      } catch (error) {
+        console.error("Error capturing photo:", error);
+      }
+    }
+  };
+
+  useEffect(() => {
+    startCamera();
+  }, []);
+
+  return (
+    <div className="flex flex-col h-screen w-screen">
+      <div className="flex-shrink-0 p-2">header</div>
+
+      <div className="flex-grow px-2">
+        <video
+          ref={videoRef}
+          className="h-full w-full rounded-md bg-slate-100"
+          autoPlay
+        />
+      </div>
+
+      <div className="flex-shrink-0 flex">
+        <div className="flex-grow p-2 flex flex-row gap-1 overflow-x-auto">
+          {photos.map((photo, index) => (
+            <img
+              key={index}
+              src={photo}
+              alt={`photo ${index + 1}`}
+              className="max-w-16 max-h-16 object-cover rounded border shadow"
+            />
+          ))}
+        </div>
+
+        <div className="flex-shrink-0 flex justify-center items-center p-2">
+          <button
+            onClick={capturePhoto}
+            className="w-16 h-16 bg-red-500 border rounded-full"
+          />
+        </div>
+
+        <div className="flex-grow"></div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
